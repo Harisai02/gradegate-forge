@@ -7,14 +7,17 @@ import { toast } from "sonner";
 interface Profile {
   id: string;
   name: string;
-  role: "student" | "teacher";
   created_at: string;
+}
+
+interface UserRole {
+  role: "student" | "teacher";
 }
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
-  profile: Profile | null;
+  profile: (Profile & { role: "student" | "teacher" }) | null;
   loading: boolean;
   signUp: (email: string, password: string, name: string, role: "student" | "teacher") => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
@@ -26,7 +29,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<(Profile & { role: "student" | "teacher" }) | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -42,11 +45,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setTimeout(async () => {
             const { data: profileData } = await supabase
               .from("profiles")
-              .select("*")
+              .select("id, name, created_at")
               .eq("id", session.user.id)
               .single();
             
-            setProfile(profileData);
+            const { data: roleData } = await supabase
+              .from("user_roles")
+              .select("role")
+              .eq("user_id", session.user.id)
+              .single();
+            
+            if (profileData && roleData) {
+              setProfile({ ...profileData, role: roleData.role as "student" | "teacher" });
+            }
           }, 0);
         } else {
           setProfile(null);
@@ -60,15 +71,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", session.user.id)
-          .single()
-          .then(({ data: profileData }) => {
-            setProfile(profileData);
-            setLoading(false);
-          });
+        Promise.all([
+          supabase
+            .from("profiles")
+            .select("id, name, created_at")
+            .eq("id", session.user.id)
+            .single(),
+          supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", session.user.id)
+            .single()
+        ]).then(([{ data: profileData }, { data: roleData }]) => {
+          if (profileData && roleData) {
+            setProfile({ ...profileData, role: roleData.role as "student" | "teacher" });
+          }
+          setLoading(false);
+        });
       } else {
         setLoading(false);
       }
@@ -85,7 +104,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         options: {
           data: {
             name,
-            role,
           },
           emailRedirectTo: `${window.location.origin}/`,
         },
@@ -94,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         toast.error(error.message);
       } else {
-        toast.success("Account created successfully!");
+        toast.success("Account created successfully! All new users start as students.");
       }
 
       return { error };

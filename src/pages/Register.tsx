@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GraduationCap } from "lucide-react";
 import { toast } from "sonner";
@@ -14,7 +14,6 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [role, setRole] = useState<"student" | "teacher">("student");
   const [isLoading, setIsLoading] = useState(false);
   const { signUp } = useAuth();
   const navigate = useNavigate();
@@ -40,7 +39,7 @@ export default function Register() {
 
     setIsLoading(true);
 
-    const { error } = await signUp(email, password, name, role);
+    const { error } = await signUp(email, password, name, "student");
 
     if (!error) {
       navigate("/login");
@@ -112,22 +111,11 @@ export default function Register() {
                 required
               />
             </div>
-            <div className="space-y-3">
-              <Label>Role</Label>
-              <RadioGroup value={role} onValueChange={(value) => setRole(value as "student" | "teacher")}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="student" id="student" />
-                  <Label htmlFor="student" className="font-normal cursor-pointer">
-                    Student
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="teacher" id="teacher" />
-                  <Label htmlFor="teacher" className="font-normal cursor-pointer">
-                    Teacher
-                  </Label>
-                </div>
-              </RadioGroup>
+            <div className="bg-muted p-4 rounded-lg">
+              <p className="text-sm text-muted-foreground">
+                Note: All new accounts are created as <strong>students</strong> by default for security. 
+                Contact an administrator to upgrade to a teacher account.
+              </p>
             </div>
             <div className="flex gap-3 pt-2">
               <Button type="submit" className="flex-1" disabled={isLoading}>
